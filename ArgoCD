@@ -1,0 +1,128 @@
+Learning Kuberenetes
+Installing ArgoCD on Minikube
+Installing ArgoCD on Minikube
+Sachin Khamitkar's photo
+Sachin Khamitkar
+·
+Mar 10, 2025
+·
+
+4 min read
+Table of contents
+
+    Prerequisites
+    Installation
+    Login to ArgoCd
+    Add Configuration of git repo and spin up a ArgoCD deployment
+    Access the Deployment
+    Test argocd:
+
+ArgoCD is a declarative, GitOps continuous delivery tool for Kubernetes applications. In this guide, we will walk through the steps to install ArgoCD on a Minikube cluster and access its UI.
+Prerequisites
+
+Before we begin, ensure that you have the following installed on your machine:
+
+    Minikube (A lightweight Kubernetes cluster for local development): https://minikube.sigs.k8s.io/docs/start/?arch=%2Fmacos%2Farm64%2Fstable%2Fbinary+download
+
+    Kubectl (CLI for interacting with Kubernetes clusters): https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-kubectl-binary-with-curl-on-linux:~:text=other%20package%20management-,Install%20kubectl%20binary%20with%20curl%20on%20Linux,-Download%20the%20latest
+
+Installation
+
+    Install ArgoCD on minukube cluster.
+
+     kubectl create namespace argocd
+     kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+
+    This will spin up an argocd cluster and create the necessary resources like pods, services, etc. To see the cluster use kubectl get pods -n argocd
+
+    Access ArgoCD UI: Use kubectl get svc -n argocd View the port which is being used for argocd-server by default its 80 and 443 which is http and https
+
+    Now that we know which ports are exposed from argocd service. Let’s access argcd by port forwarding method, forwarding 7000 it from the cluster.
+
+     kubectl port-forward -n argocd svc/argocd-server 7000:443
+
+    Access argocd using browser at http://localhost:7000 this will give you a security warning to accept and access the URL.
+
+Login to ArgoCd
+
+To login to argocd password can be extracted from the argocd secrets.
+
+    Open a new terminal use
+
+ kubectl get secret argocd-initial-admin-secret -n argocd -o yaml
+
+This will output the secret in YAML format
+
+    Copy it and decode the secret in base64 use
+
+echo Y2NuQk55cVN3UXhZa3pHMw== | base64 --decode
+
+    Access the URL again and put the name as admin and password as ccnBNyqSwQxYkzG3
+
+Add Configuration of git repo and spin up a ArgoCD deployment
+
+    Clone this project locally https://gitlab.com/sachin-devops-pocs/argocd.git
+
+    Create a CRD file named application.yaml. This file already exists in the repository and is used to define an ArgoCD application in a Kubernetes cluster. You can find its reference here.https://argo-cd.readthedocs.io/en/stable/user-guide/application-specification/
+
+    Create application.yaml file on minikube cluster and apply it.
+
+     kubectl apply -f application.yaml
+
+    As soon as it applies it will create an application deployment in argocd. To view the deployment access argocd URL
+
+Open it and observe the deployment. This shows deployment, service and resplicasets and pods as per the deployment manifests from dev folder in repo.
+
+Access the Deployment
+
+Now that we have successfully deployed our application which is grafana let’s access it.
+
+    To access it port forwarding should be done on 3000 port Let's do it.
+
+     kubectl port-forward -n argocd-demo-namepace svc/myapp-service 3000:3000 --address 0.0.0.0
+
+    Note: The --address flag allows access to this deployment from any IP. For example, if the cluster runs on an EC2 instance or a VM, and you need to access the deployment externally, this flag becomes essential.
+
+    Access localhost:3000 in the browser.
+
+    Test argocd:
+
+    Auto sync test:
+
+    To test auto sync we are going to change something in repo. Before that let’s observe the current state of deployment.
+
+    Let’s change the replica count from 2 to 3 commit the change and push.
+
+    As soon as we do the changes argocd will autosync to the repo and change the deployment state. Wait for 3 minutes or click Refresh the button to see instant changes. Pods are changed from 2 to 3, indicating that auto sync is working properly.
+
+    Test prune resources: Pruning in ArgoCD means that if an resource is deleted, ArgoCD should also remove it. Similarly, if the application's name is changed, the old resource no longer exists, and ArgoCD must update accordingly. To test this, let's rename the myapp to myapp-v1 in the deployment file and commit the changes.
+
+    As soon as we do the changes it appears in the argocd.
+
+    Test self-heal: To test self-heal, we will do the manual changes in the cluster. The changes should not affect the argocd. To do so let’s edit the deployment myapp1 and change the replica count from 3 to 2
+
+     kubectl edit deployment -n argocd-demo-namepace
+
+    As soon as the deployment changes we can see in argocd the pods change from 3 to 2 for some time but again it comes back to the normal state which is 3 pods.
+
+Subscribe to our newsletter
+
+Read articles from Learning Kuberenetes directly inside your inbox. Subscribe to the newsletter, and don't miss out.
+ArgoCD
+Devops
+observability
+monitoring
+Grafana
+ 
+
+©2025 Learning Kuberenetes
+Archive
+·
+Privacy policy
+·
+Terms
+
+Powered by Hashnode - Build your developer hub.
+Start your blog
+Create docs
+
